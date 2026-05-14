@@ -8,7 +8,7 @@
 
 AIHwanModeBase::AIHwanModeBase()
 {
-	static ConstructorHelpers::FClassFinder<APawn> PawnClassRef(TEXT("/Game/BluePrint/NaNally/BP_NaNally.BP_NaNally_C"));
+	static ConstructorHelpers::FClassFinder<APawn> PawnClassRef(TEXT("/Game/BluePrint/Character/NaNally/BP_NaNally.BP_NaNally_C"));
 	if(PawnClassRef.Class != NULL)
 	{
 		DefaultPawnClass = PawnClassRef.Class;

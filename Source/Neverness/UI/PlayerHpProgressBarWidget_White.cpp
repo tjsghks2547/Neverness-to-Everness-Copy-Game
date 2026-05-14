@@ -20,9 +20,9 @@ void UPlayerHpProgressBarWidget_White::NativeConstruct()
 
 void UPlayerHpProgressBarWidget_White::Update_HpProgressHpBarWhite(int32 _iCurrentHp)
 {
-	m_iCurrentHp = _iCurrentHp;
-	float fCurrentHp = m_iCurrentHp;
-	float fCurrentMaxHp = m_iMaxHp;
+	CurrentHp = _iCurrentHp;
+	float fCurrentHp = CurrentHp;
+	float fCurrentMaxHp = MaxHp;
 
 
 	float fRatio = fCurrentHp / fCurrentMaxHp;

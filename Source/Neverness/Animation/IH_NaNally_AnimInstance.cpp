@@ -52,5 +52,5 @@ void UIH_NaNally_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		// 점프 중인지 판단.
 		//bIsJumping = bIsFalling & (Velocity.Z > JumpingThreshold);
 	}
-
+	
 }

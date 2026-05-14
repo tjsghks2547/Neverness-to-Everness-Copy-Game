@@ -1,10 +1,12 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+Ôªø// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "PlayerUIWidget.generated.h"
+
+enum class EInterActionType : uint8;
 
 /**
  * 
@@ -19,23 +21,44 @@ public:
 
 protected:
 	virtual void NativeConstruct() override; 
-
 public:
-	// ƒ≥∏Ø≈Õø°º≠ »£√‚«‘ «‘ºˆ.
+	// Ï∫êÎ¶≠ÌÑ∞ÏóêÏÑú Ìò∏Ï∂úÌï® Ìï®Ïàò.
+
+	/* HP Í¥ÄÎ†® */
 	void UpdateHp(int32 _iCurrentHp); 
 	void UpdateProgressBarHp(int32 _iCurrentHp);	
 	void SetUp_Ui_Hp(int32 _iCurrentHp, int32 _iMaxHp);
-	
+	/* ----------------- */
+
+	/* Stamina Í¥ÄÎ†® */
+	void SetUp_Ui_Stamina(float _fCurrentStamina, float _fMaxStamina);
+	void UpdateProgressBarStamina(float _fCurrentStamina, float _fMaxStamina);
+	/* ----------------- */
+
+	/* ÎåÄÌôî UI Í¥ÄÎ†® */
+	void Set_DialogRenderOnOff(EInterActionType _eInterActionKeyType, ESlateVisibility _eSlateVisiblilty);
+	void F_KeyStateUpdate(float _InIncreaseAmount);
+	void Set_F_KeyState(float _InPercent);
+
 
 protected:
-	TObjectPtr<class UPlayerHpProgressBarWidget> m_pWidgetHpProgressBar;
-	TObjectPtr<class UPlayerHpProgressBarWidget_White> m_pWidgetHpWhiteProgressBar;
-	TObjectPtr<class UTextBlock> m_pCurrentHpText;
-	TObjectPtr<class UTextBlock> m_pMaxHpText;
+#pragma region Hp UI 
+	TObjectPtr<class UPlayerHpProgressBarWidget> WidgetHpProgressBar;
+	TObjectPtr<class UPlayerHpProgressBarWidget_White> WidgetHpWhiteProgressBar;
+	TObjectPtr<class UTextBlock> CurrentHpText;
+	TObjectPtr<class UTextBlock> MaxHpText;
+#pragma endregion 
 
-private:
-	int32 m_iCurrentHp;
-	int32 m_iMaxHp; 
+#pragma region Stamina UI
+	TObjectPtr<class UPlayerStaminaProgressBarWidget> WidgetStaminProgressBar; 
+#pragma endregion 
 
-	
+
+#pragma region InterAction UI
+	TObjectPtr<class UPlayerInterActionDialogWidget> PlayerInterActionDialogWidget;
+	TObjectPtr<class UInterActionKey_F_ProgressBarUI> InterActionKeyFWidget;
+#pragma endregion 
+
+
+
 };

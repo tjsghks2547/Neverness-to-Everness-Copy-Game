@@ -23,5 +23,6 @@ class NEVERNESS_API IPlayerUiWidget_Interface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 	virtual void SetupPlayerUiWidget(class UPlayerUIWidget* InPlayerUiWidget) = 0; 
+	
 
 };

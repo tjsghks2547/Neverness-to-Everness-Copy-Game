@@ -9,6 +9,11 @@
 #include "EnhancedInputComponent.h"
 #include "Component/StatComponent.h"
 #include "UI/PlayerUIWidget.h"
+#include "Component/Ui_InterAction_Component.h"
+#include "Types/InterActionType.h"
+#include "Components/CapsuleComponent.h"
+
+
 
 // Sets default values
 ACharacter_NaNally::ACharacter_NaNally()
@@ -59,22 +64,22 @@ ACharacter_NaNally::ACharacter_NaNally()
 #pragma region Component 생성 및 설정
 
 	// Scene Component
-	m_pSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-	m_pCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 
-	m_pSpringArm->SetupAttachment(RootComponent);
-	m_pCamera->SetupAttachment(m_pSpringArm);
+	SpringArm->SetupAttachment(RootComponent);
+	Camera->SetupAttachment(SpringArm);
 
 	// 컨트롤러의 회전 값을 사용할 지 여부. 
 	// // 카메라 지지대(드론)에게 "컨트롤러(영혼)가 바라보는 방향을 똑같이 따라가라!" 라고 명령함
-	m_pSpringArm->bUsePawnControlRotation = true;
+	SpringArm->bUsePawnControlRotation = true;
 
-	m_pSpringArm->TargetArmLength = 600.0f; 
+	SpringArm->TargetArmLength = 600.0f; 
 
 
 	// Actor Component
-	m_pStatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
-
+	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
+	UiComponent = CreateDefaultSubobject<UUi_InterAction_Component>(TEXT("UiComponent"));
 
 
 #pragma endregion 
@@ -83,25 +88,34 @@ ACharacter_NaNally::ACharacter_NaNally()
 	static ConstructorHelpers::FObjectFinder<UInputAction> ShoulderMoveActionRef(TEXT("/Game/Input/Action/IA_Shoulder_Walk.IA_Shoulder_Walk"));
 	if(ShoulderMoveActionRef.Object != NULL)
 	{
-		m_ShoulderMoveAction = ShoulderMoveActionRef.Object; 
+		ShoulderMoveAction = ShoulderMoveActionRef.Object; 
 	}
 
 	static ConstructorHelpers::FObjectFinder<UInputAction> ShoulderLookActionRef(TEXT("/Game/Input/Action/IA_Shoulder_Look.IA_Shoulder_Look"));
 	if(ShoulderLookActionRef.Object != NULL)
 	{
-		m_ShoulderLookAction = ShoulderLookActionRef.Object; 
+		ShoulderLookAction = ShoulderLookActionRef.Object; 
 	}
 	
-	static ConstructorHelpers::FObjectFinder<UInputAction> TestActionRef(TEXT("/Game/Input/Action/IA_Test.IA_Test"));
+	static ConstructorHelpers::FObjectFinder<UInputAction> TestActionRef(TEXT("/Game/Input/Action/IA_Test_Hp.IA_Test_Hp"));
 	if (TestActionRef.Object != NULL)
 	{
-		m_TestAction = TestActionRef.Object;
+		TestAction = TestActionRef.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> TestStaminaActionRef(TEXT("/Game/Input/Action/IA_Test_Stamina.IA_Test_Stamina"));
+	if (TestStaminaActionRef.Object != NULL)
+	{
+		TestStaminaAction = TestStaminaActionRef.Object;
 	}
 
 #pragma endregion 
 
 
 
+#pragma region 맴버변수 기본값 설정
+	InterActionType = EInterActionType::None;
+#pragma endregion 
 
 
 }
@@ -119,23 +133,40 @@ void ACharacter_NaNally::SetupPlayerUiWidget(UPlayerUIWidget* _InPlayerUiWidget)
 {
 	// 설정할 플레이어의 체력 및 최대 체력
 	
-	m_pStatComponent->SetUp_stat_Hp(100, 100);
+	StatComponent->SetUp_stat_Hp(100, 100);
+	StatComponent->SetUp_stat_Stamina(100, 100);
 
 	if(_InPlayerUiWidget)
 	{
+#pragma region HP와 Stamina 관련 
 		// 초기값 초기화
-		_InPlayerUiWidget->SetUp_Ui_Hp(m_pStatComponent->GetCurrentHp(), m_pStatComponent->GetMaxHp());
-
+		_InPlayerUiWidget->SetUp_Ui_Hp(StatComponent->GetCurrentHp(), StatComponent->GetMaxHp());
+		_InPlayerUiWidget->SetUp_Ui_Stamina(StatComponent->GetCurrentStamina(), StatComponent->GetMaxStamina());
 
 		// Ui widget의 default 값 초기화 하기.
-		m_pStatComponent->Delegate_OnHpChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::UpdateHp);
-		m_pStatComponent->Delegate_OnHpChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::UpdateProgressBarHp);
+		// Hp 관련 델리게이트 이벤트
+		StatComponent->Delegate_OnHpChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::UpdateHp);
+		StatComponent->Delegate_OnHpChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::UpdateProgressBarHp);
+
+		// Stamina 관련 델리게이트 이벤트
+		StatComponent->Delegate_OnStaminaChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::UpdateProgressBarStamina);
+#pragma endregion 
+			
+
+#pragma region InterAction 관련 
+		UiComponent->Delegate_OnDialogRender.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::Set_DialogRenderOnOff);
+		UiComponent->Delegate_OnInterActionFKeyStateChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::F_KeyStateUpdate);
+		UiComponent->Delegate_OnInterActionFKey_SetStateChanged.AddUObject(_InPlayerUiWidget, &UPlayerUIWidget::Set_F_KeyState);	
+#pragma endregion 
 	}
 
-
-
-
 }
+
+
+
+
+
+
 
 
 // Called every frame
@@ -143,6 +174,7 @@ void ACharacter_NaNally::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	StatComponent->Delegate_OnStaminaChanged.Broadcast(StatComponent->GetCurrentStamina(), StatComponent->GetMaxStamina());
 }
 
 // Called to bind functionality to input 
@@ -158,25 +190,40 @@ void ACharacter_NaNally::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	{
 		// 입력 바인딩 -> 이벤트와 실행 함수를 연결하는 과정 
 		EnhancedInputComponent->BindAction(
-			m_ShoulderMoveAction,
+			ShoulderMoveAction,
 			ETriggerEvent::Triggered,
 			this,
 			&ACharacter_NaNally::ShoulderMove
 		);
 
 		EnhancedInputComponent->BindAction(
-			m_ShoulderLookAction,
+			ShoulderLookAction,
 			ETriggerEvent::Triggered,
 			this,
 			&ACharacter_NaNally::ShoulderLook
 		);
 
 		EnhancedInputComponent->BindAction(
-			m_TestAction,
-			ETriggerEvent::Started,
+			TestAction,
+			ETriggerEvent::Triggered,
 			this,
-			&ACharacter_NaNally::TestAction
+			&ACharacter_NaNally::TestUiAction
 		);
+	}
+}
+
+void ACharacter_NaNally::Render_InterActionUi(EInterActionType _Tag, ESlateVisibility _eSlateVisibility)
+{
+	UiComponent->Delegate_OnDialogRender.Broadcast(_Tag,_eSlateVisibility);
+
+	switch (_Tag)
+	{
+	case EInterActionType::Item:
+		//UiComponent->
+		break;
+
+	default:
+		break; 
 	}
 }
 
@@ -210,17 +257,44 @@ void ACharacter_NaNally::ShoulderLook(const FInputActionValue& Value)
 	// 입력 값 
 	FVector2D RotationValue = Value.Get<FVector2D>(); 
 
-	AddControllerYawInput(RotationValue.X);
-	AddControllerPitchInput(RotationValue.Y);
+	AddControllerYawInput(RotationValue.X * 0.2f);
+	AddControllerPitchInput(RotationValue.Y * 0.2f);
 
 }
 
-void ACharacter_NaNally::TestAction()
+void ACharacter_NaNally::TestUiAction()
 {
-	m_pStatComponent->Apply_Damage(50);
-
-	m_pStatComponent->Delegate_OnHpChanged.Broadcast(m_pStatComponent->GetCurrentHp());
+	/* hp 관련 테스트 코드 */
+	//m_pStatComponent->Apply_Damage(50);
+	//m_pStatComponent->Delegate_OnHpChanged.Broadcast(m_pStatComponent->GetCurrentHp());
 	
+	/* Stamina 관련 테스트 코드 */
+	//StatComponent->Apply_Stamina(50);
+	//m_pStatComponent->Delegate_OnStaminaChanged.Broadcast(m_pStatComponent->GetCurrentStamina(), m_pStatComponent->GetMaxStamina());
+
+	const float DeltaTime = GetWorld()->GetDeltaSeconds();
+
+	/*F키 상호작용 테스트 코드*/
+	switch (InterActionType)
+	{
+	case EInterActionType::None:
+		break;
+	case EInterActionType::Dialog:
+		break;
+	case EInterActionType::Chest:
+		break;
+	case EInterActionType::Item:
+		UiComponent->Delegate_OnInterActionFKeyStateChanged.Broadcast(DeltaTime);
+		break;
+	default:
+		break;
+	}
+	
+}
+
+void ACharacter_NaNally::Ui_Key_State_Reset()
+{
+	UiComponent->Delegate_OnInterActionFKey_SetStateChanged.Broadcast(0.0f);
 }
 
 

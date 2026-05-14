@@ -23,8 +23,8 @@ protected:
 public:
 	FORCEINLINE void Setup_HpWhiteProgressBar(int32 _iCurrentHp, int32 _iMaxHp)
 	{
-		m_iCurrentHp = _iCurrentHp; 
-		m_iMaxHp = _iMaxHp; 
+		CurrentHp = _iCurrentHp; 
+		MaxHp = _iMaxHp; 
 	};
 
 
@@ -37,9 +37,9 @@ private:
 	TObjectPtr<class UProgressBar> m_pProgressBar;
 
 	UPROPERTY()
-	int32 m_iCurrentHp;
+	int32 CurrentHp;
 	UPROPERTY()
-	int32 m_iMaxHp; 
+	int32 MaxHp; 
 
 
 };

@@ -6,13 +6,18 @@
 #include "PlayerHpProgressBarWidget_White.h"
 #include "Components/TextBlock.h"
 #include "Interface/PlayerUiWidget_Interface.h"
+#include "PlayerStaminaProgressBarWidget.h"
+#include "Components/Image.h"
+#include "Animation/WidgetAnimation.h"
+#include "PlayerInterActionDialogWidget.h"
+#include "InterActionKey_F_ProgressBarUI.h"
+#include "Types/InterActionType.h"
 
 
 UPlayerUIWidget::UPlayerUIWidget(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
-	m_iCurrentHp = 0.0f;
-	m_iMaxHp = 0.0f; 
+
 }
 
 void UPlayerUIWidget::NativeConstruct()
@@ -21,18 +26,34 @@ void UPlayerUIWidget::NativeConstruct()
 	// BluePrint에서 생성해준 Asset들은 생성자 이후에 찾기
 
 #pragma region Blueprint 에서 생성해준 widget
-	m_pWidgetHpProgressBar = Cast<UPlayerHpProgressBarWidget>(GetWidgetFromName(TEXT("WBP_HpProgressBar")));
-	ensureAlways(m_pWidgetHpProgressBar);
+	WidgetHpProgressBar = Cast<UPlayerHpProgressBarWidget>(GetWidgetFromName(TEXT("WBP_HpProgressBar")));
+	ensureAlways(WidgetHpProgressBar);
 
-	m_pWidgetHpWhiteProgressBar = Cast<UPlayerHpProgressBarWidget_White>(GetWidgetFromName(TEXT("WBP_HpWhiteProgressBar")));
-	ensureAlways(m_pWidgetHpWhiteProgressBar);
+	WidgetHpWhiteProgressBar = Cast<UPlayerHpProgressBarWidget_White>(GetWidgetFromName(TEXT("WBP_HpWhiteProgressBar")));
+	ensureAlways(WidgetHpWhiteProgressBar);
 
 
-	m_pCurrentHpText = Cast<UTextBlock>(GetWidgetFromName(TEXT("Current_HP_Text")));
-	ensureAlways(m_pCurrentHpText);
+	CurrentHpText = Cast<UTextBlock>(GetWidgetFromName(TEXT("Current_HP_Text")));
+	ensureAlways(CurrentHpText);
 
-	m_pMaxHpText = Cast<UTextBlock>(GetWidgetFromName(TEXT("Max_Hp_Text")));
-	ensureAlways(m_pMaxHpText);
+	MaxHpText = Cast<UTextBlock>(GetWidgetFromName(TEXT("Max_Hp_Text")));
+	ensureAlways(MaxHpText);
+
+	/* Stamina 관련 */
+	WidgetStaminProgressBar = Cast<UPlayerStaminaProgressBarWidget>(GetWidgetFromName(TEXT("WBP_StaminaBar")));
+	ensureAlways(WidgetHpProgressBar);
+	/* ----------------- */
+
+
+	/* InterAction 관련 */
+	PlayerInterActionDialogWidget = Cast<UPlayerInterActionDialogWidget>(GetWidgetFromName(TEXT("WBP_InterAction")));
+	ensureAlways(PlayerInterActionDialogWidget);
+
+	InterActionKeyFWidget = Cast<UInterActionKey_F_ProgressBarUI>(GetWidgetFromName(TEXT("WBP_RoundBoxInterAction_ProgressBar")));
+	ensureAlways(InterActionKeyFWidget);
+
+	/* ----------------- */
+
 #pragma endregion 
 
 
@@ -45,29 +66,95 @@ void UPlayerUIWidget::NativeConstruct()
 	}
 
 
+#pragma region UI 렌더링 초기 설정
+	PlayerInterActionDialogWidget->SetVisibility(ESlateVisibility::Collapsed);
+	InterActionKeyFWidget->SetVisibility(ESlateVisibility::Collapsed);
+#pragma endregion 
+
 }
+
+
 
 void UPlayerUIWidget::UpdateHp(int32 _iCurrentHp)
 {
-	m_iCurrentHp = _iCurrentHp;
 	// 일단 TEXT 부터 
-	m_pCurrentHpText->SetText(FText::AsNumber(m_iCurrentHp));
-	
+	CurrentHpText->SetText(FText::AsNumber(_iCurrentHp));
 }
 
 void UPlayerUIWidget::UpdateProgressBarHp(int32 _iCurrentHp)
 {
-	m_pWidgetHpProgressBar->UpdateHpProgressBar(_iCurrentHp);
-	m_pWidgetHpWhiteProgressBar->Update_HpProgressHpBarWhite(_iCurrentHp);
+	WidgetHpProgressBar->UpdateHpProgressBar(_iCurrentHp);
+	WidgetHpWhiteProgressBar->Update_HpProgressHpBarWhite(_iCurrentHp);
 }
 
 
 
 void UPlayerUIWidget::SetUp_Ui_Hp(int32 _iCurrentHp, int32 _iMaxHp)
 {
-	m_iCurrentHp = _iCurrentHp;
-	m_iMaxHp = _iMaxHp;
-
-	m_pWidgetHpProgressBar->Setup_Hp(_iCurrentHp, _iMaxHp);
-	m_pWidgetHpWhiteProgressBar->Setup_HpWhiteProgressBar(_iCurrentHp, _iMaxHp);
+	WidgetHpProgressBar->Setup_Hp(_iCurrentHp, _iMaxHp);
+	WidgetHpWhiteProgressBar->Setup_HpWhiteProgressBar(_iCurrentHp, _iMaxHp);
 }
+
+void UPlayerUIWidget::SetUp_Ui_Stamina(float _fCurrentStamina, float _fMaxStamina)
+{
+	WidgetStaminProgressBar->Set_Up_Stamina(_fCurrentStamina, _fMaxStamina);
+}
+
+void UPlayerUIWidget::UpdateProgressBarStamina(float _fCurrentStamina, float _fMaxStamina)
+{
+	
+	/* Stamina Rendering Opacity Animation Check */
+
+	if(_fCurrentStamina >= 98.0f)
+	{
+		if(WidgetStaminProgressBar->Get_HasPlayedStaminaAnimation() == false)
+		{
+			WidgetStaminProgressBar->PlayUiAnimation();
+			WidgetStaminProgressBar->Set_HasPlayedStaminaAnimation(true);
+		}
+	}
+
+	else
+	{
+		WidgetStaminProgressBar->Set_HasPlayedStaminaAnimation(false);
+		WidgetStaminProgressBar->ResetRenderOpacity();
+	}
+
+	/* ------------------------------------------- */
+
+	WidgetStaminProgressBar->UpdateProgressBar(_fCurrentStamina, _fMaxStamina);
+}
+
+void UPlayerUIWidget::Set_DialogRenderOnOff(EInterActionType _eInterActionKeyType, ESlateVisibility _eSlateVisiblilty)
+{
+	PlayerInterActionDialogWidget->SetVisibility(_eSlateVisiblilty);
+	
+	switch (_eInterActionKeyType)
+	{
+	case EInterActionType::None:
+		break;
+	case EInterActionType::Dialog:
+		break;
+	case EInterActionType::Chest:
+		break;
+	case EInterActionType::Item:
+		InterActionKeyFWidget->SetVisibility(_eSlateVisiblilty);
+		break;
+	default:
+		break;
+	}
+
+}
+
+void UPlayerUIWidget::F_KeyStateUpdate(float _InIncreaseAmount)
+{
+	InterActionKeyFWidget->UpdatePercent_Progressbar(_InIncreaseAmount);
+}
+
+void UPlayerUIWidget::Set_F_KeyState(float _InPercent)
+{
+	InterActionKeyFWidget->SetPercent_Progressbar(_InPercent);
+}
+
+
+
